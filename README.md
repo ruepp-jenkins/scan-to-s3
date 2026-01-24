@@ -28,8 +28,14 @@ cp .env.example .env
 
 ### 3. Run with Docker
 
+use pre build image (recommended):
 ```bash
-docker-compose up --build
+docker compose up -d
+```
+
+build your own image:
+```bash
+docker compose up -f docker-compose.build.yml -d --build
 ```
 
 ### 4. Access the Application
