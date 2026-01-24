@@ -2,7 +2,7 @@ services:
   pdf-uploader:
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "3001:3000"
     env_file:
