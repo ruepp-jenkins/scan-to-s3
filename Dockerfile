@@ -1,11 +1,11 @@
-FROM node:20-alpine AS builder
+FROM node:lts-alpine AS builder
 
 WORKDIR /app
 
 COPY backend/package*.json ./
 RUN npm ci --only=production
 
-FROM node:20-alpine
+FROM node:lts-alpine
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
