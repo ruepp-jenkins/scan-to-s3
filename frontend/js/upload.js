@@ -35,8 +35,6 @@ const Upload = {
       xhr.addEventListener('load', () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve({ success: true, key: presignedData.key });
-        } else if (xhr.status === 412) {
-          reject(new Error('A file with this name already exists'));
         } else {
           reject(new Error(`Upload failed with status ${xhr.status}`));
         }

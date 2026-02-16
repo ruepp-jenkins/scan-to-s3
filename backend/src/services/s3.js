@@ -21,18 +21,16 @@ function sanitizeFilename(filename) {
 
 export async function generatePresignedUploadUrl(originalFilename) {
   const sanitized = sanitizeFilename(originalFilename);
-  const key = `uploads/${sanitized}`;
+  const key = sanitized;
 
   const command = new PutObjectCommand({
     Bucket: config.s3.bucket,
     Key: key,
     ContentType: 'application/pdf',
-    IfNoneMatch: '*',
   });
 
   const url = await getSignedUrl(s3Client, command, {
     expiresIn: config.s3.presignedUrlExpiry,
-    signableHeaders: new Set(['content-type', 'if-none-match']),
   });
 
   return {
@@ -40,7 +38,6 @@ export async function generatePresignedUploadUrl(originalFilename) {
     key,
     headers: {
       'Content-Type': 'application/pdf',
-      'If-None-Match': '*',
     },
   };
 }
