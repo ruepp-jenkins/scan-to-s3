@@ -8,7 +8,6 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 class ApiClient(
@@ -61,7 +60,7 @@ class ApiClient(
                 }
                 Result.failure(ApiException(response.code, error))
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             Result.failure(ApiException(0, "Connection failed: ${e.message}"))
         }
     }
@@ -104,7 +103,7 @@ class ApiClient(
                 }
                 Result.failure(ApiException(response.code, error))
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             Result.failure(ApiException(0, "Connection failed: ${e.message}"))
         }
     }
@@ -131,7 +130,7 @@ class ApiClient(
                     ApiException(response.code, "Upload failed with status ${response.code}")
                 )
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             Result.failure(ApiException(0, "Upload failed: ${e.message}"))
         }
     }
