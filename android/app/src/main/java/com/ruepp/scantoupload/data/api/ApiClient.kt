@@ -1,5 +1,6 @@
 package com.ruepp.scantoupload.data.api
 
+import android.util.Log
 import com.ruepp.scantoupload.data.model.PresignedUrlResponse
 import com.ruepp.scantoupload.data.preferences.ServerConfig
 import okhttp3.MediaType.Companion.toMediaType
@@ -13,6 +14,10 @@ import java.util.concurrent.TimeUnit
 class ApiClient(
     private val serverConfig: ServerConfig
 ) {
+    companion object {
+        private const val TAG = "ApiClient"
+    }
+
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     private val client = OkHttpClient.Builder()
@@ -41,12 +46,12 @@ class ApiClient(
     }
 
     fun checkStatus(): Result<Unit> {
-        val request = Request.Builder()
-            .url("${baseUrl()}/api/app/status")
-            .get()
-            .build()
-
         return try {
+            val request = Request.Builder()
+                .url("${baseUrl()}/api/app/status")
+                .get()
+                .build()
+
             val response = client.newCall(request).execute()
             val responseBody = response.body?.string() ?: ""
 
@@ -61,6 +66,7 @@ class ApiClient(
                 Result.failure(ApiException(response.code, error))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Status check failed", e)
             Result.failure(ApiException(0, "Connection failed: ${e.message}"))
         }
     }
@@ -69,13 +75,14 @@ class ApiClient(
         val json = JSONObject().apply {
             put("filename", filename)
         }
-        val body = json.toString().toRequestBody(jsonMediaType)
-        val request = Request.Builder()
-            .url("${baseUrl()}/api/app/upload/presigned-url")
-            .post(body)
-            .build()
 
         return try {
+            val body = json.toString().toRequestBody(jsonMediaType)
+            val request = Request.Builder()
+                .url("${baseUrl()}/api/app/upload/presigned-url")
+                .post(body)
+                .build()
+
             val response = client.newCall(request).execute()
             val responseBody = response.body?.string() ?: ""
 
@@ -104,6 +111,7 @@ class ApiClient(
                 Result.failure(ApiException(response.code, error))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to get presigned URL", e)
             Result.failure(ApiException(0, "Connection failed: ${e.message}"))
         }
     }
@@ -113,15 +121,15 @@ class ApiClient(
         headers: Map<String, String>,
         requestBody: RequestBody
     ): Result<Unit> {
-        val requestBuilder = Request.Builder()
-            .url(uploadUrl)
-            .put(requestBody)
-
-        for ((key, value) in headers) {
-            requestBuilder.addHeader(key, value)
-        }
-
         return try {
+            val requestBuilder = Request.Builder()
+                .url(uploadUrl)
+                .put(requestBody)
+
+            for ((key, value) in headers) {
+                requestBuilder.addHeader(key, value)
+            }
+
             val response = uploadClient.newCall(requestBuilder.build()).execute()
             if (response.isSuccessful) {
                 Result.success(Unit)
@@ -131,6 +139,7 @@ class ApiClient(
                 )
             }
         } catch (e: Exception) {
+            Log.e(TAG, "S3 upload failed", e)
             Result.failure(ApiException(0, "Upload failed: ${e.message}"))
         }
     }

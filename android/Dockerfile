@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jdk-jammy AS builder
+FROM eclipse-temurin:17-jdk-jammy
 
 ENV ANDROID_HOME=/opt/android-sdk
 ENV GRADLE_HOME=/opt/gradle
@@ -29,21 +29,26 @@ RUN yes | sdkmanager --licenses > /dev/null 2>&1 && \
 WORKDIR /app
 COPY . .
 
-# Generate the Gradle wrapper (creates gradle-wrapper.jar + gradlew)
+# Generate the Gradle wrapper
 RUN gradle wrapper --gradle-version 8.5
 
-# Generate a signing keystore (so the APK is installable)
-RUN keytool -genkey -v \
-    -keystore /app/release.jks \
-    -keyalg RSA -keysize 2048 -validity 10000 \
-    -alias scantoupload \
-    -storepass android -keypass android \
-    -dname "CN=Scan to Upload, O=Ruepp, L=Unknown, ST=Unknown, C=US" && \
-    printf 'storeFile=../release.jks\nstorePassword=android\nkeyAlias=scantoupload\nkeyPassword=android\n' > /app/keystore.properties
-
-# Build the signed release APK
-RUN ./gradlew assembleRelease --no-daemon
-
-# --- Output stage: just the APK ---
-FROM scratch AS output
-COPY --from=builder /app/app/build/outputs/apk/release/*.apk /
+# Entrypoint: generate keystore if missing (from mounted folder), then build
+CMD [ "/bin/bash", "-c", "\
+    if [ ! -f /keystore/release.jks ]; then \
+        echo 'Generating signing keystore (first time only)...' && \
+        keytool -genkey -v \
+            -keystore /keystore/release.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias scantoupload \
+            -storepass android -keypass android \
+            -dname 'CN=Scan to Upload, O=Ruepp, L=Unknown, ST=Unknown, C=US'; \
+    else \
+        echo 'Using existing keystore from mounted folder.'; \
+    fi && \
+    if [ ! -f /keystore/keystore.properties ]; then \
+        printf 'storeFile=/keystore/release.jks\\nstorePassword=android\\nkeyAlias=scantoupload\\nkeyPassword=android\\n' > /keystore/keystore.properties; \
+    fi && \
+    cp /keystore/keystore.properties /app/keystore.properties && \
+    ./gradlew assembleRelease --no-daemon && \
+    cp /app/app/build/outputs/apk/release/*.apk /output/ \
+"]

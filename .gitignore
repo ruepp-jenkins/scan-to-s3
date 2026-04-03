@@ -24,3 +24,7 @@ Thumbs.db
 # Build
 dist/
 build/
+
+# Android local artifacts and signing material
+android/output/
+android/keystore/

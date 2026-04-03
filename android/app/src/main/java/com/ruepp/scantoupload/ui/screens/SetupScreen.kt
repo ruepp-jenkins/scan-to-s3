@@ -141,10 +141,10 @@ fun SetupScreen(
                     }
                 }
 
-                if (uiState.error != null) {
+                uiState.error?.let { errorMessage ->
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = uiState.error!!,
+                        text = errorMessage,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
