@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Flatbed scanner body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,58 L80,58 Q82,58 82,60 L82,72 Q82,74 80,74 L28,74 Q26,74 26,72 L26,60 Q26,58 28,58 Z" />
+
+    <!-- Scanner lid (angled open) -->
+    <path
+        android:fillColor="#E8E8E8"
+        android:pathData="M28,58 L80,58 L80,36 Q80,34 78,34 L30,34 Q28,34 28,36 Z" />
+
+    <!-- Scanner glass/scanning surface -->
+    <path
+        android:fillColor="#D0E8FF"
+        android:pathData="M32,38 L76,38 L76,55 L32,55 Z" />
+
+    <!-- Document on scanner glass -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,40 L70,40 L70,53 L38,53 Z" />
+
+    <!-- Document text lines -->
+    <path
+        android:fillColor="#CCCCCC"
+        android:pathData="M41,43 L62,43 L62,44.5 L41,44.5 Z" />
+    <path
+        android:fillColor="#CCCCCC"
+        android:pathData="M41,46.5 L67,46.5 L67,48 L41,48 Z" />
+    <path
+        android:fillColor="#CCCCCC"
+        android:pathData="M41,50 L58,50 L58,51.5 L41,51.5 Z" />
+
+    <!-- Scan light bar -->
+    <path
+        android:fillColor="#007BFF"
+        android:pathData="M32,46 L76,46 L76,47.5 L32,47.5 Z"
+        android:alpha="0.6" />
+
+    <!-- Upload arrow (cloud upload indicator) -->
+    <path
+        android:fillColor="#007BFF"
+        android:pathData="M57,65 L57,70 L51,70 L51,65 L47,65 L54,59 L61,65 Z" />
+</vector>

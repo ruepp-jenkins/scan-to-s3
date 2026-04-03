@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { config, validateConfig } from './config.js';
 import authRoutes from './routes/auth.js';
 import uploadRoutes from './routes/upload.js';
+import appRoutes from './routes/app.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +30,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/app', appRoutes);
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
