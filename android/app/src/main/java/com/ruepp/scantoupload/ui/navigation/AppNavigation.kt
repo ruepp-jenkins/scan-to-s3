@@ -7,42 +7,40 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.ruepp.scantoupload.data.preferences.ServerConfig
-import com.ruepp.scantoupload.data.preferences.TokenManager
-import com.ruepp.scantoupload.ui.screens.LoginScreen
+import com.ruepp.scantoupload.ui.screens.SetupScreen
 import com.ruepp.scantoupload.ui.screens.UploadScreen
-import com.ruepp.scantoupload.viewmodel.LoginViewModel
+import com.ruepp.scantoupload.viewmodel.SetupViewModel
 import com.ruepp.scantoupload.viewmodel.UploadViewModel
 
 @Composable
 fun AppNavigation(
-    tokenManager: TokenManager,
     serverConfig: ServerConfig,
     sharedUris: List<Uri>
 ) {
     val navController = rememberNavController()
 
-    val startDestination = if (tokenManager.isTokenValid()) "upload" else "login"
+    val startDestination = if (serverConfig.isConfigured()) "upload" else "setup"
 
     NavHost(navController = navController, startDestination = startDestination) {
-        composable("login") {
-            val viewModel = remember { LoginViewModel(tokenManager, serverConfig) }
-            LoginScreen(
+        composable("setup") {
+            val viewModel = remember { SetupViewModel(serverConfig) }
+            SetupScreen(
                 viewModel = viewModel,
-                onLoginSuccess = {
+                onSetupSuccess = {
                     navController.navigate("upload") {
-                        popUpTo("login") { inclusive = true }
+                        popUpTo("setup") { inclusive = true }
                     }
                 }
             )
         }
 
         composable("upload") {
-            val viewModel = remember { UploadViewModel(tokenManager, serverConfig) }
+            val viewModel = remember { UploadViewModel(serverConfig) }
             UploadScreen(
                 viewModel = viewModel,
                 sharedUris = sharedUris,
-                onLogout = {
-                    navController.navigate("login") {
+                onDisconnect = {
+                    navController.navigate("setup") {
                         popUpTo("upload") { inclusive = true }
                     }
                 }

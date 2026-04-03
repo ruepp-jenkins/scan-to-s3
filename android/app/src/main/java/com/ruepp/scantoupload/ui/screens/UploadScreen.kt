@@ -53,7 +53,7 @@ import com.ruepp.scantoupload.viewmodel.UploadViewModel
 fun UploadScreen(
     viewModel: UploadViewModel,
     sharedUris: List<Uri>,
-    onLogout: () -> Unit
+    onDisconnect: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -67,10 +67,10 @@ fun UploadScreen(
         }
     }
 
-    // Handle session expiry
-    LaunchedEffect(uiState.sessionExpired) {
-        if (uiState.sessionExpired) {
-            onLogout()
+    // Handle invalid token
+    LaunchedEffect(uiState.tokenInvalid) {
+        if (uiState.tokenInvalid) {
+            onDisconnect()
         }
     }
 
@@ -109,12 +109,12 @@ fun UploadScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            viewModel.logout()
-                            onLogout()
+                            viewModel.disconnect()
+                            onDisconnect()
                         },
                         enabled = !uiState.isUploading
                     ) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Disconnect")
                     }
                 }
             )

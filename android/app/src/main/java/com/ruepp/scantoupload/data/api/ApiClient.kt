@@ -1,9 +1,7 @@
 package com.ruepp.scantoupload.data.api
 
-import com.ruepp.scantoupload.data.model.LoginResponse
 import com.ruepp.scantoupload.data.model.PresignedUrlResponse
 import com.ruepp.scantoupload.data.preferences.ServerConfig
-import com.ruepp.scantoupload.data.preferences.TokenManager
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -14,8 +12,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 class ApiClient(
-    private val serverConfig: ServerConfig,
-    private val tokenManager: TokenManager
+    private val serverConfig: ServerConfig
 ) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
@@ -25,9 +22,9 @@ class ApiClient(
         .readTimeout(30, TimeUnit.SECONDS)
         .addInterceptor { chain ->
             val requestBuilder = chain.request().newBuilder()
-            val token = tokenManager.getToken()
-            if (token != null) {
-                requestBuilder.addHeader("Authorization", "Bearer $token")
+            val token = serverConfig.getAppToken()
+            if (token.isNotBlank()) {
+                requestBuilder.addHeader("X-App-Token", token)
             }
             chain.proceed(requestBuilder.build())
         }
@@ -44,15 +41,10 @@ class ApiClient(
         return serverConfig.getServerUrl().trimEnd('/')
     }
 
-    fun login(username: String, password: String): Result<LoginResponse> {
-        val json = JSONObject().apply {
-            put("username", username)
-            put("password", password)
-        }
-        val body = json.toString().toRequestBody(jsonMediaType)
+    fun checkStatus(): Result<Unit> {
         val request = Request.Builder()
-            .url("${baseUrl()}/api/auth/login")
-            .post(body)
+            .url("${baseUrl()}/api/app/status")
+            .get()
             .build()
 
         return try {
@@ -60,13 +52,12 @@ class ApiClient(
             val responseBody = response.body?.string() ?: ""
 
             if (response.isSuccessful) {
-                val responseJson = JSONObject(responseBody)
-                Result.success(LoginResponse(token = responseJson.getString("token")))
+                Result.success(Unit)
             } else {
                 val error = try {
-                    JSONObject(responseBody).optString("error", "Login failed")
+                    JSONObject(responseBody).optString("error", "Connection failed")
                 } catch (_: Exception) {
-                    "Login failed (${response.code})"
+                    "Connection failed (${response.code})"
                 }
                 Result.failure(ApiException(response.code, error))
             }
@@ -81,7 +72,7 @@ class ApiClient(
         }
         val body = json.toString().toRequestBody(jsonMediaType)
         val request = Request.Builder()
-            .url("${baseUrl()}/api/upload/presigned-url")
+            .url("${baseUrl()}/api/app/upload/presigned-url")
             .post(body)
             .build()
 
@@ -147,5 +138,5 @@ class ApiClient(
 }
 
 class ApiException(val code: Int, message: String) : Exception(message) {
-    val isUnauthorized: Boolean get() = code == 401
+    val isUnauthorized: Boolean get() = code == 401 || code == 403
 }

@@ -30,19 +30,19 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.ruepp.scantoupload.viewmodel.LoginViewModel
+import com.ruepp.scantoupload.viewmodel.SetupViewModel
 
 @Composable
-fun LoginScreen(
-    viewModel: LoginViewModel,
-    onLoginSuccess: () -> Unit
+fun SetupScreen(
+    viewModel: SetupViewModel,
+    onSetupSuccess: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
 
-    LaunchedEffect(uiState.loginSuccess) {
-        if (uiState.loginSuccess) {
-            onLoginSuccess()
+    LaunchedEffect(uiState.setupSuccess) {
+        if (uiState.setupSuccess) {
+            onSetupSuccess()
         }
     }
 
@@ -77,7 +77,7 @@ fun LoginScreen(
                     .padding(24.dp)
             ) {
                 Text(
-                    text = "Login",
+                    text = "Server Setup",
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
@@ -104,26 +104,9 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
-                    value = uiState.username,
-                    onValueChange = viewModel::updateUsername,
-                    label = { Text("Username") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isLoading
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = uiState.password,
-                    onValueChange = viewModel::updatePassword,
-                    label = { Text("Password") },
+                    value = uiState.appToken,
+                    onValueChange = viewModel::updateAppToken,
+                    label = { Text("App Token") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
@@ -133,7 +116,7 @@ fun LoginScreen(
                     keyboardActions = KeyboardActions(
                         onDone = {
                             focusManager.clearFocus()
-                            viewModel.login()
+                            viewModel.connect()
                         }
                     ),
                     modifier = Modifier.fillMaxWidth(),
@@ -143,7 +126,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
-                    onClick = { viewModel.login() },
+                    onClick = { viewModel.connect() },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.isLoading
                 ) {
@@ -154,7 +137,7 @@ fun LoginScreen(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Login")
+                        Text("Connect")
                     }
                 }
 

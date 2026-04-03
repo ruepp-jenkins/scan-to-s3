@@ -4,79 +4,75 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ruepp.scantoupload.data.api.ApiClient
 import com.ruepp.scantoupload.data.preferences.ServerConfig
-import com.ruepp.scantoupload.data.preferences.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class LoginUiState(
+data class SetupUiState(
     val serverUrl: String = "",
-    val username: String = "",
-    val password: String = "",
+    val appToken: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val loginSuccess: Boolean = false
+    val setupSuccess: Boolean = false
 )
 
-class LoginViewModel(
-    private val tokenManager: TokenManager,
+class SetupViewModel(
     private val serverConfig: ServerConfig
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        LoginUiState(serverUrl = serverConfig.getServerUrl())
+        SetupUiState(
+            serverUrl = serverConfig.getServerUrl(),
+            appToken = serverConfig.getAppToken()
+        )
     )
-    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+    val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
 
     fun updateServerUrl(url: String) {
         _uiState.value = _uiState.value.copy(serverUrl = url, error = null)
     }
 
-    fun updateUsername(username: String) {
-        _uiState.value = _uiState.value.copy(username = username, error = null)
+    fun updateAppToken(token: String) {
+        _uiState.value = _uiState.value.copy(appToken = token, error = null)
     }
 
-    fun updatePassword(password: String) {
-        _uiState.value = _uiState.value.copy(password = password, error = null)
-    }
-
-    fun login() {
+    fun connect() {
         val state = _uiState.value
 
         if (state.serverUrl.isBlank()) {
             _uiState.value = state.copy(error = "Server URL is required")
             return
         }
-        if (state.username.isBlank()) {
-            _uiState.value = state.copy(error = "Username is required")
-            return
-        }
-        if (state.password.isBlank()) {
-            _uiState.value = state.copy(error = "Password is required")
+        if (state.appToken.isBlank()) {
+            _uiState.value = state.copy(error = "App token is required")
             return
         }
 
         _uiState.value = state.copy(isLoading = true, error = null)
 
+        // Save before verifying so ApiClient picks up the values
         serverConfig.saveServerUrl(state.serverUrl)
-        val apiClient = ApiClient(serverConfig, tokenManager)
+        serverConfig.saveAppToken(state.appToken)
+
+        val apiClient = ApiClient(serverConfig)
 
         viewModelScope.launch(Dispatchers.IO) {
-            val result = apiClient.login(state.username, state.password)
+            val result = apiClient.checkStatus()
             result.fold(
-                onSuccess = { response ->
-                    tokenManager.saveToken(response.token)
+                onSuccess = {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        loginSuccess = true
+                        setupSuccess = true
                     )
                 },
                 onFailure = { error ->
+                    // Clear saved config on failure so isConfigured() returns false
+                    serverConfig.clear()
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = error.message ?: "Login failed"
+                        error = error.message ?: "Connection failed"
                     )
                 }
             )

@@ -29,6 +29,10 @@ export const config = {
     presignedUrlExpiry: parseInt(process.env.PRESIGNED_URL_EXPIRY || '300', 10),
   },
 
+  app: {
+    token: process.env.APP_TOKEN,
+  },
+
   cors: {
     origin: process.env.CORS_ORIGIN || '*',
   },

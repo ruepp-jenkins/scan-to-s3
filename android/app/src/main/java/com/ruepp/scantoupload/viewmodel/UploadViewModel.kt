@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import com.ruepp.scantoupload.data.api.ApiClient
 import com.ruepp.scantoupload.data.api.ApiException
 import com.ruepp.scantoupload.data.preferences.ServerConfig
-import com.ruepp.scantoupload.data.preferences.TokenManager
 import com.ruepp.scantoupload.util.ProgressRequestBody
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,18 +31,17 @@ data class FileItem(
 data class UploadUiState(
     val files: List<FileItem> = emptyList(),
     val isUploading: Boolean = false,
-    val sessionExpired: Boolean = false
+    val tokenInvalid: Boolean = false
 )
 
 class UploadViewModel(
-    private val tokenManager: TokenManager,
     private val serverConfig: ServerConfig
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UploadUiState())
     val uiState: StateFlow<UploadUiState> = _uiState.asStateFlow()
 
-    private val apiClient = ApiClient(serverConfig, tokenManager)
+    private val apiClient = ApiClient(serverConfig)
 
     fun addFiles(uris: List<Uri>, contentResolver: ContentResolver) {
         val newFiles = uris.mapNotNull { uri ->
@@ -93,10 +91,10 @@ class UploadViewModel(
                     },
                     onFailure = { error ->
                         if (error is ApiException && error.isUnauthorized) {
-                            updateFileStatus(file.uri, FileUploadStatus.ERROR, 0, "Session expired")
+                            updateFileStatus(file.uri, FileUploadStatus.ERROR, 0, "Invalid app token")
                             _uiState.value = _uiState.value.copy(
                                 isUploading = false,
-                                sessionExpired = true
+                                tokenInvalid = true
                             )
                             return@launch
                         }
@@ -114,19 +112,17 @@ class UploadViewModel(
         }
     }
 
-    fun logout() {
-        tokenManager.clearToken()
+    fun disconnect() {
+        serverConfig.clear()
     }
 
     private fun uploadSingleFile(
         file: FileItem,
         contentResolver: ContentResolver
     ): Result<Unit> {
-        // Step 1: Get presigned URL
         val presignedResult = apiClient.getPresignedUrl(file.name)
         val presigned = presignedResult.getOrElse { return Result.failure(it) }
 
-        // Step 2: Upload to S3
         val inputStream = contentResolver.openInputStream(file.uri)
             ?: return Result.failure(Exception("Cannot read file"))
 
