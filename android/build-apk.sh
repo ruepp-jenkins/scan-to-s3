@@ -33,27 +33,54 @@ if [ ! -f "${KEYSTORE_DIR}/release.jks" ] && docker volume inspect "${LEGACY_VOL
         sh -c "cp /legacy/release.jks /keystore/release.jks 2>/dev/null || true; cp /legacy/keystore.properties /keystore/keystore.properties 2>/dev/null || true"
 fi
 
+BUILD_START_EPOCH="$(date +%s)"
+
 docker run --rm \
     -v "${KEYSTORE_DIR}:/keystore" \
     -v "${OUTPUT_DIR}:/output" \
     "${IMAGE_NAME}"
 
-# Rename APK to a clean name
-APK_FILE=$(find "${OUTPUT_DIR}" -name "*.apk" -type f | head -1)
-if [ -z "${APK_FILE}" ]; then
-    echo "Error: No APK file found in build output."
+# Rename APK to a unique, timestamped filename
+LATEST_APK=""
+LATEST_MTIME=0
+
+shopt -s nullglob
+for CANDIDATE in "${OUTPUT_DIR}"/*.apk; do
+    MTIME="$(stat -c %Y "${CANDIDATE}" 2>/dev/null || printf '0')"
+    if [ "${MTIME}" -lt "${BUILD_START_EPOCH}" ]; then
+        continue
+    fi
+    if [ "${MTIME}" -ge "${LATEST_MTIME}" ]; then
+        LATEST_MTIME="${MTIME}"
+        LATEST_APK="${CANDIDATE}"
+    fi
+done
+shopt -u nullglob
+
+if [ -z "${LATEST_APK}" ]; then
+    echo "Error: No APK file found for this build run in '${OUTPUT_DIR}'."
     exit 1
 fi
 
-if [ "${APK_FILE}" != "${OUTPUT_DIR}/scan-to-upload.apk" ]; then
-    mv "${APK_FILE}" "${OUTPUT_DIR}/scan-to-upload.apk"
+BUILD_TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+FINAL_APK="${OUTPUT_DIR}/scan-to-upload-${BUILD_TIMESTAMP}.apk"
+if [ -e "${FINAL_APK}" ]; then
+    SUFFIX=1
+    while [ -e "${OUTPUT_DIR}/scan-to-upload-${BUILD_TIMESTAMP}-${SUFFIX}.apk" ]; do
+        SUFFIX=$((SUFFIX + 1))
+    done
+    FINAL_APK="${OUTPUT_DIR}/scan-to-upload-${BUILD_TIMESTAMP}-${SUFFIX}.apk"
+fi
+
+if [ "${LATEST_APK}" != "${FINAL_APK}" ]; then
+    mv "${LATEST_APK}" "${FINAL_APK}"
 fi
 
 echo "[3/3] Cleaning up Docker image..."
 docker rmi "${IMAGE_NAME}" > /dev/null 2>&1 || true
 
-APK_SIZE=$(du -h "${OUTPUT_DIR}/scan-to-upload.apk" | cut -f1)
+APK_SIZE=$(du -h "${FINAL_APK}" | cut -f1)
 echo ""
 echo "=== Done ==="
-echo "APK: ${OUTPUT_DIR}/scan-to-upload.apk (${APK_SIZE})"
+echo "APK: ${FINAL_APK} (${APK_SIZE})"
 echo "Keystore dir: ${KEYSTORE_DIR} (persistent across builds)"
