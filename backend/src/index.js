@@ -6,6 +6,8 @@ import { config, validateConfig } from './config.js';
 import authRoutes from './routes/auth.js';
 import uploadRoutes from './routes/upload.js';
 import appRoutes from './routes/app.js';
+import { apiRequestLogger } from './middleware/requestLogger.js';
+import { getClientIp, logError, logInfo } from './logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -19,6 +21,8 @@ app.use(cors({
   origin: config.cors.origin,
   credentials: true,
 }));
+
+app.use(apiRequestLogger);
 
 app.use(express.json());
 
@@ -37,10 +41,18 @@ app.get('*', (req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
+  logError('unhandled_error', {
+    method: req.method,
+    path: req.originalUrl,
+    ip: getClientIp(req),
+    message: err.message,
+    stack: err.stack,
+  });
   res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(config.port, () => {
-  console.log(`Server running on port ${config.port}`);
+  logInfo('server_started', {
+    port: config.port,
+  });
 });
