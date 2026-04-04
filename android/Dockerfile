@@ -9,10 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Gradle 8.11.1 (matches gradle-wrapper.properties)
-RUN wget -q https://services.gradle.org/distributions/gradle-8.11.1-bin.zip -O /tmp/gradle.zip && \
+# Install Gradle 9.3.1 (matches gradle-wrapper.properties)
+RUN wget -q https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -O /tmp/gradle.zip && \
     unzip -q /tmp/gradle.zip -d /opt && \
-    mv /opt/gradle-8.11.1 ${GRADLE_HOME} && \
+    mv /opt/gradle-9.3.1 ${GRADLE_HOME} && \
     rm /tmp/gradle.zip
 
 # Install Android command-line tools
@@ -24,13 +24,13 @@ RUN mkdir -p ${ANDROID_HOME}/cmdline-tools && \
 
 # Accept licenses and install SDK components
 RUN yes | sdkmanager --licenses > /dev/null 2>&1 && \
-    sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+    sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
 WORKDIR /app
 COPY . .
 
 # Generate the Gradle wrapper
-RUN gradle wrapper --gradle-version 8.11.1
+RUN gradle wrapper --gradle-version 9.3.1
 
 # Entrypoint: generate keystore if missing (from mounted folder), then build
 CMD [ "/bin/bash", "-c", "\

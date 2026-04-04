@@ -4,7 +4,7 @@
 
 - **Android Studio** Hedgehog (2023.1.1) or newer
 - **JDK 17** (bundled with Android Studio)
-- **Android SDK 34** (install via Android Studio → SDK Manager)
+- **Android SDK 36** (install via Android Studio → SDK Manager)
 - A physical Android device or emulator running Android 8.0+ (API 26+)
 
 ## Local Development
@@ -83,7 +83,7 @@ docker build --output=. .
 ```
 
 This builds the unsigned release APK and copies it to the current directory. The multi-stage Dockerfile:
-1. Installs JDK 17, Gradle 8.5, Android SDK 34, build-tools
+1. Installs JDK 17, Gradle 9.3.1, Android SDK 36, build-tools 36.0.0
 2. Generates the Gradle wrapper
 3. Runs `assembleRelease`
 4. Outputs just the `.apk` file
