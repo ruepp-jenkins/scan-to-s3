@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
@@ -38,11 +39,11 @@ class SetupViewModel(
     val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
 
     fun updateServerUrl(url: String) {
-        _uiState.value = _uiState.value.copy(serverUrl = url, error = null)
+        _uiState.update { it.copy(serverUrl = url, error = null) }
     }
 
     fun updateAppToken(token: String) {
-        _uiState.value = _uiState.value.copy(appToken = token, error = null)
+        _uiState.update { it.copy(appToken = token, error = null) }
     }
 
     fun connect() {
@@ -53,28 +54,30 @@ class SetupViewModel(
         val normalizedAppToken = state.appToken.trim()
 
         if (normalizedServerUrl.isBlank()) {
-            _uiState.value = state.copy(error = "Server URL is required")
+            _uiState.update { it.copy(error = "Server URL is required") }
             return
         }
         val parsedUrl = normalizedServerUrl.toHttpUrlOrNull()
         if (parsedUrl == null) {
-            _uiState.value = state.copy(
-                error = "Invalid server URL. Include http:// or https://"
-            )
+            _uiState.update {
+                it.copy(error = "Invalid server URL. Include http:// or https://")
+            }
             return
         }
         if (normalizedAppToken.isBlank()) {
-            _uiState.value = state.copy(error = "App token is required")
+            _uiState.update { it.copy(error = "App token is required") }
             return
         }
 
         val formattedServerUrl = parsedUrl.toString().trimEnd('/')
-        _uiState.value = state.copy(
-            serverUrl = formattedServerUrl,
-            appToken = normalizedAppToken,
-            isLoading = true,
-            error = null
-        )
+        _uiState.update {
+            it.copy(
+                serverUrl = formattedServerUrl,
+                appToken = normalizedAppToken,
+                isLoading = true,
+                error = null
+            )
+        }
 
         val apiClient = runCatching {
             serverConfig.saveServerUrl(formattedServerUrl)
@@ -83,20 +86,24 @@ class SetupViewModel(
         }.getOrElse { error ->
             Log.e(TAG, "Failed to prepare connection", error)
             safeClearConfig()
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                error = "Connection setup failed: ${userMessage(error)}"
-            )
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    error = "Connection setup failed: ${userMessage(error)}"
+                )
+            }
             return
         }
 
         val connectExceptionHandler = CoroutineExceptionHandler { _, throwable ->
             Log.e(TAG, "Unhandled exception in connect coroutine", throwable)
             safeClearConfig()
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                error = "Connection failed: ${userMessage(throwable)}"
-            )
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    error = "Connection failed: ${userMessage(throwable)}"
+                )
+            }
         }
 
         viewModelScope.launch(Dispatchers.IO + connectExceptionHandler) {
@@ -104,26 +111,29 @@ class SetupViewModel(
                 val result = apiClient.checkStatus()
                 result.fold(
                     onSuccess = {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            setupSuccess = true
-                        )
+                        _uiState.update {
+                            it.copy(isLoading = false, setupSuccess = true)
+                        }
                     },
                     onFailure = { error ->
                         safeClearConfig()
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            error = error.message ?: "Connection failed"
-                        )
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = error.message ?: "Connection failed"
+                            )
+                        }
                     }
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected connection crash", e)
                 safeClearConfig()
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = "Connection failed: ${userMessage(e)}"
-                )
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Connection failed: ${userMessage(e)}"
+                    )
+                }
             }
         }
     }
@@ -134,6 +144,18 @@ class SetupViewModel(
     }
 
     private fun userMessage(error: Throwable): String {
-        return error.message?.takeIf { it.isNotBlank() } ?: "Unknown error"
+        val message = error.message ?: ""
+        return when {
+            message.contains("CLEARTEXT communication", ignoreCase = true) ->
+                "Server requires HTTPS, or use an https:// URL"
+            message.contains("Unable to resolve host", ignoreCase = true) ->
+                "Server not found. Check the URL and your network connection."
+            message.contains("Connection refused", ignoreCase = true) ->
+                "Connection refused. Is the server running?"
+            message.contains("timeout", ignoreCase = true) ->
+                "Connection timed out. Check the URL and your network."
+            message.isNotBlank() -> message
+            else -> "Unknown error"
+        }
     }
 }

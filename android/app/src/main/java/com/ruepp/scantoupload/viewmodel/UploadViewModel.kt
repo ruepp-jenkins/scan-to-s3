@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class FileUploadStatus {
@@ -52,27 +53,21 @@ class UploadViewModel(
             val size = getFileSize(uri, contentResolver)
             FileItem(uri = uri, name = name, size = size)
         }
-        _uiState.value = _uiState.value.copy(
-            files = _uiState.value.files + newFiles
-        )
+        _uiState.update { it.copy(files = it.files + newFiles) }
     }
 
     fun removeFile(uri: Uri) {
-        _uiState.value = _uiState.value.copy(
-            files = _uiState.value.files.filter { it.uri != uri }
-        )
+        _uiState.update { it.copy(files = it.files.filter { f -> f.uri != uri }) }
     }
 
     fun clearCompleted() {
-        _uiState.value = _uiState.value.copy(
-            files = _uiState.value.files.filter { it.status != FileUploadStatus.SUCCESS }
-        )
+        _uiState.update { it.copy(files = it.files.filter { f -> f.status != FileUploadStatus.SUCCESS }) }
     }
 
     fun uploadAll(contentResolver: ContentResolver) {
         if (_uiState.value.isUploading) return
 
-        _uiState.value = _uiState.value.copy(isUploading = true)
+        _uiState.update { it.copy(isUploading = true) }
 
         viewModelScope.launch(Dispatchers.IO) {
             val files = _uiState.value.files.toList()
@@ -92,10 +87,9 @@ class UploadViewModel(
                     onFailure = { error ->
                         if (error is ApiException && error.isUnauthorized) {
                             updateFileStatus(file.uri, FileUploadStatus.ERROR, 0, "Invalid app token")
-                            _uiState.value = _uiState.value.copy(
-                                isUploading = false,
-                                tokenInvalid = true
-                            )
+                            _uiState.update {
+                                it.copy(isUploading = false, tokenInvalid = true)
+                            }
                             return@launch
                         }
                         updateFileStatus(
@@ -108,7 +102,7 @@ class UploadViewModel(
                 )
             }
 
-            _uiState.value = _uiState.value.copy(isUploading = false)
+            _uiState.update { it.copy(isUploading = false) }
         }
     }
 
@@ -126,15 +120,19 @@ class UploadViewModel(
         val inputStream = contentResolver.openInputStream(file.uri)
             ?: return Result.failure(Exception("Cannot read file"))
 
-        val requestBody = ProgressRequestBody(
-            inputStream = inputStream,
-            contentLength = file.size,
-            onProgress = { progress ->
-                updateFileStatus(file.uri, FileUploadStatus.UPLOADING, progress)
-            }
-        )
-
-        return apiClient.uploadToS3(presigned.uploadUrl, presigned.headers, requestBody)
+        return try {
+            val requestBody = ProgressRequestBody(
+                inputStream = inputStream,
+                contentLength = file.size,
+                onProgress = { progress ->
+                    updateFileStatus(file.uri, FileUploadStatus.UPLOADING, progress)
+                }
+            )
+            apiClient.uploadToS3(presigned.uploadUrl, presigned.headers, requestBody)
+        } catch (e: Exception) {
+            runCatching { inputStream.close() }
+            Result.failure(e)
+        }
     }
 
     private fun updateFileStatus(
@@ -143,15 +141,17 @@ class UploadViewModel(
         progress: Int,
         error: String? = null
     ) {
-        _uiState.value = _uiState.value.copy(
-            files = _uiState.value.files.map { file ->
-                if (file.uri == uri) {
-                    file.copy(status = status, progress = progress, errorMessage = error)
-                } else {
-                    file
+        _uiState.update { state ->
+            state.copy(
+                files = state.files.map { file ->
+                    if (file.uri == uri) {
+                        file.copy(status = status, progress = progress, errorMessage = error)
+                    } else {
+                        file
+                    }
                 }
-            }
-        )
+            )
+        }
     }
 
     private fun getFileName(uri: Uri, contentResolver: ContentResolver): String? {

@@ -2,7 +2,9 @@ package com.ruepp.scantoupload.ui.navigation
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -23,7 +25,14 @@ fun AppNavigation(
 
     NavHost(navController = navController, startDestination = startDestination) {
         composable("setup") {
-            val viewModel = remember { SetupViewModel(serverConfig) }
+            val viewModel: SetupViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return SetupViewModel(serverConfig) as T
+                    }
+                }
+            )
             SetupScreen(
                 viewModel = viewModel,
                 onSetupSuccess = {
@@ -35,7 +44,14 @@ fun AppNavigation(
         }
 
         composable("upload") {
-            val viewModel = remember { UploadViewModel(serverConfig) }
+            val viewModel: UploadViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return UploadViewModel(serverConfig) as T
+                    }
+                }
+            )
             UploadScreen(
                 viewModel = viewModel,
                 sharedUris = sharedUris,
